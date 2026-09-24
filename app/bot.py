@@ -3,14 +3,17 @@ from __future__ import annotations
 import asyncio
 
 from aiogram import Bot, Dispatcher
+from dotenv import load_dotenv
 from loguru import logger
 
-from app.config import get_settings
+from app.config import BASE_DIR, get_settings
 from app.handlers.generate import make_router
 from app.handlers.start import router as start_router
 
 
 async def main() -> None:
+    # CUDA_VISIBLE_DEVICES is intentionally read before any lazy model import.
+    load_dotenv(BASE_DIR / ".env")
     settings = get_settings()
     settings.create_directories()
     logger.remove()

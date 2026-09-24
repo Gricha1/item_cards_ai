@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.exceptions import TelegramNetworkError
 from dotenv import load_dotenv
 from loguru import logger
@@ -19,7 +20,8 @@ async def main() -> None:
     settings.create_directories()
     logger.remove()
     logger.add(lambda message: print(message, end=""), level=settings.log_level)
-    bot = Bot(token=settings.telegram_bot_token)
+    session = AiohttpSession(proxy=settings.telegram_proxy_url) if settings.telegram_proxy_url else None
+    bot = Bot(token=settings.telegram_bot_token, session=session)
     dispatcher = Dispatcher()
     dispatcher.include_router(start_router)
     dispatcher.include_router(make_router(settings))

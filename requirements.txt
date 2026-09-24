@@ -1,4 +1,5 @@
 aiogram>=3.20,<4
+aiohttp-socks>=0.10,<1
 httpx>=0.28,<1
 --extra-index-url https://download.pytorch.org/whl/cu121
 # RTX 20xx / NVIDIA 535 supports CUDA 12.1 wheels; do not let pip select CUDA 13.

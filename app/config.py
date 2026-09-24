@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BASE_DIR / ".env", env_file_encoding="utf-8", extra="ignore")
 
     telegram_bot_token: str = Field(min_length=10)
+    telegram_proxy_url: str | None = None
     model_device: str = "cuda"
     qwen_enabled: bool = False
     qwen_min_vram_gb: int = 20

@@ -17,7 +17,7 @@ def test_missing_template_is_explicit(tmp_path, monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "test-token-123456")
     pipeline = GenerationPipeline(Settings(output_dir=tmp_path))
     with pytest.raises(TemplateNotFoundError):
-        pipeline.template_for("male", "full")
+        pipeline.template_for("female", "full")
 
 
 def test_invalid_image_is_rejected(tmp_path):

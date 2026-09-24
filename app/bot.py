@@ -32,6 +32,9 @@ async def main() -> None:
     while True:
         try:
             await dispatcher.start_polling(bot, close_bot_session=False)
+            # A normal return means a shutdown was requested; do not start a
+            # new polling loop after SIGTERM.
+            break
         except (TelegramNetworkError, asyncio.TimeoutError):
             logger.exception("Telegram connection failed; retrying in 5 seconds")
             await asyncio.sleep(5)

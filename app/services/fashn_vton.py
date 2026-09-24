@@ -75,7 +75,9 @@ class FashnVtonService:
 
     @staticmethod
     def _install_progress_sampler(
-        pipeline, progress_callback: Callable[[int, int], None] | None
+        pipeline,
+        progress_callback: Callable[[str, int, int], None] | None,
+        variant: str,
     ) -> None:
         """Expose FASHN's denoising step count without changing its output."""
         import torch
@@ -121,7 +123,7 @@ class FashnVtonService:
                     guided = unconditional + guidance_scale * (conditional - unconditional)
                 images = images + delta * guided
                 if progress_callback is not None:
-                    progress_callback(step_index + 1, num_timesteps)
+                    progress_callback(variant, step_index + 1, num_timesteps)
 
             images = images.to(dtype=torch.float).clamp_(-1.0, 1.0)
             return [tensor_to_pil(image, unnormalize=True) for image in images]
@@ -148,11 +150,14 @@ class FashnVtonService:
         person_path: Path,
         garment_path: Path,
         output_path: Path,
-        progress_callback: Callable[[int, int], None] | None = None,
+        progress_callback: Callable[[str, int, int], None] | None = None,
+        *,
+        variant: str = "first",
+        seed: int = 42,
     ) -> Path:
         try:
             pipeline = self._get_pipeline()
-            self._install_progress_sampler(pipeline, progress_callback)
+            self._install_progress_sampler(pipeline, progress_callback, variant)
             # Release cache held by a previous request before the fixed-size
             # FASHN denoising pass starts.
             try:
@@ -167,6 +172,7 @@ class FashnVtonService:
                 garment_image=Image.open(garment_path).convert("RGB"),
                 category=self.category,
                 num_timesteps=self.num_timesteps,
+                seed=seed,
             )
             result.images[0].save(output_path, "PNG")
             return output_path

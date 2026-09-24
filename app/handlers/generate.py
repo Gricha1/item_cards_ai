@@ -77,10 +77,10 @@ def make_router(settings: Settings) -> Router:
         await callback.message.edit_text("Генерация началась. Подготавливаю фото и модель…")
         try:
             loop = asyncio.get_running_loop()
-            progress_queue: asyncio.Queue[tuple[int, int]] = asyncio.Queue()
+            progress_queue: asyncio.Queue[tuple[str, int, int]] = asyncio.Queue()
 
-            def report_progress(current_step: int, total_steps: int) -> None:
-                loop.call_soon_threadsafe(progress_queue.put_nowait, (current_step, total_steps))
+            def report_progress(variant: str, current_step: int, total_steps: int) -> None:
+                loop.call_soon_threadsafe(progress_queue.put_nowait, (variant, current_step, total_steps))
 
             generation_task = asyncio.create_task(
                 asyncio.to_thread(
@@ -91,17 +91,22 @@ def make_router(settings: Settings) -> Router:
                     report_progress,
                 )
             )
-            reported_bucket = 0
+            reported_bucket = -1
+            active_variant = ""
             while not generation_task.done():
                 try:
-                    current_step, total_steps = await asyncio.wait_for(progress_queue.get(), timeout=1)
+                    variant, current_step, total_steps = await asyncio.wait_for(progress_queue.get(), timeout=1)
                 except TimeoutError:
                     continue
+                if variant != active_variant:
+                    active_variant = variant
+                    reported_bucket = -1
                 percent = round(current_step * 100 / total_steps)
                 bucket = percent // 10
                 if bucket > reported_bucket or percent == 100:
+                    variant_number = "1" if variant == "first" else "2"
                     await callback.message.edit_text(
-                        f"Генерация: {percent}% ({current_step}/{total_steps}). Это может занять несколько минут…"
+                        f"Вариант {variant_number} из 2: {percent}% ({current_step}/{total_steps})."
                     )
                     reported_bucket = bucket
 

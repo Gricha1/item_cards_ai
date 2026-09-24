@@ -2,7 +2,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-python3 -m venv .venv
+if [ ! -x .venv/bin/python ]; then
+  if ! python3 -m venv .venv; then
+    echo "python3-venv is unavailable; using user-local virtualenv fallback."
+    python3 -m pip install --user virtualenv
+    python3 -m virtualenv .venv
+  fi
+fi
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt

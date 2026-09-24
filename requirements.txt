@@ -1,6 +1,8 @@
 aiogram>=3.20,<4
 httpx>=0.28,<1
-torch>=2.5
+--extra-index-url https://download.pytorch.org/whl/cu121
+# RTX 20xx / NVIDIA 535 supports CUDA 12.1 wheels; do not let pip select CUDA 13.
+torch==2.5.1+cu121
 diffusers>=0.35
 transformers>=4.51
 accelerate>=1.4

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,11 +42,17 @@ class GenerationPipeline:
             )
         return path
 
-    def generate(self, garment_path: Path, gender: str, framing: str) -> list[GeneratedVariant]:
+    def generate(
+        self,
+        garment_path: Path,
+        gender: str,
+        framing: str,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> list[GeneratedVariant]:
         person_path = self.template_for(gender, framing)
         first_path = unique_path(self.settings.output_dir)
         second_path = unique_path(self.settings.output_dir)
-        first = self.fashn.generate(person_path, garment_path, first_path)
+        first = self.fashn.generate(person_path, garment_path, first_path, progress_callback)
 
         try:
             second = self.qwen.generate(person_path, garment_path, second_path, gender, framing)

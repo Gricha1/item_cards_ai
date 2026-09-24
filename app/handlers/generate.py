@@ -74,9 +74,38 @@ def make_router(settings: Settings) -> Router:
         framing = callback.data.split(":", 1)[1]
         data = await state.get_data()
         await callback.answer()
-        await callback.message.edit_text("Генерация началась. Это может занять несколько минут…")
+        await callback.message.edit_text("Генерация началась. Подготавливаю фото и модель…")
         try:
-            variants = await asyncio.to_thread(pipeline.generate, Path(data["garment_path"]), data["gender"], framing)
+            loop = asyncio.get_running_loop()
+            progress_queue: asyncio.Queue[tuple[int, int]] = asyncio.Queue()
+
+            def report_progress(current_step: int, total_steps: int) -> None:
+                loop.call_soon_threadsafe(progress_queue.put_nowait, (current_step, total_steps))
+
+            generation_task = asyncio.create_task(
+                asyncio.to_thread(
+                    pipeline.generate,
+                    Path(data["garment_path"]),
+                    data["gender"],
+                    framing,
+                    report_progress,
+                )
+            )
+            reported_bucket = 0
+            while not generation_task.done():
+                try:
+                    current_step, total_steps = await asyncio.wait_for(progress_queue.get(), timeout=1)
+                except TimeoutError:
+                    continue
+                percent = round(current_step * 100 / total_steps)
+                bucket = percent // 10
+                if bucket > reported_bucket or percent == 100:
+                    await callback.message.edit_text(
+                        f"Генерация: {percent}% ({current_step}/{total_steps}). Это может занять несколько минут…"
+                    )
+                    reported_bucket = bucket
+
+            variants = await generation_task
             for variant in variants:
                 await callback.message.answer_photo(FSInputFile(variant.path), caption=variant.label)
         except TemplateNotFoundError as error:

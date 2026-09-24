@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from types import MethodType
 
 from PIL import Image
 
@@ -71,6 +73,61 @@ class FashnVtonService:
 
         model.forward_for_cfg = forward_without_cfg
 
+    @staticmethod
+    def _install_progress_sampler(
+        pipeline, progress_callback: Callable[[int, int], None] | None
+    ) -> None:
+        """Expose FASHN's denoising step count without changing its output."""
+        import torch
+        from fashn_vton.pipeline import get_rf_schedule, tensor_to_pil
+
+        @torch.inference_mode()
+        def sample_with_progress(
+            _pipeline,
+            *,
+            ca_images,
+            garment_images,
+            person_poses,
+            garment_poses,
+            garment_categories,
+            num_timesteps: int = 30,
+            time_shift_mu: float = 1.5,
+            guidance_scale: float = 1.5,
+            skip_cfg_last_n_steps: int = 1,
+            use_tqdm: bool = True,
+        ):
+            del use_tqdm
+            device, dtype = ca_images.device, ca_images.dtype
+            batch_size = ca_images.shape[0]
+            channels, height, width = _pipeline.tryon_model.channels_in, *_pipeline.tryon_model.input_shape
+            images = torch.randn((batch_size, channels, height, width), dtype=dtype, device=device)
+            timesteps = get_rf_schedule(num_steps=num_timesteps, mu=time_shift_mu)
+            model_kwargs = {
+                "person_poses": person_poses,
+                "garment_poses": garment_poses,
+                "ca_images": ca_images,
+                "garment_images": garment_images,
+                "garment_categories": garment_categories,
+            }
+
+            for step_index, (current_time, previous_time) in enumerate(zip(timesteps[:-1], timesteps[1:])):
+                delta = previous_time - current_time
+                time_vector = torch.full((batch_size,), current_time, dtype=dtype, device=device)
+                prediction = _pipeline.tryon_model.forward_for_cfg(images, time_vector, **model_kwargs)
+                conditional, unconditional = prediction["v_c"], prediction["v_u"]
+                if skip_cfg_last_n_steps > 0 and step_index >= num_timesteps - skip_cfg_last_n_steps:
+                    guided = conditional
+                else:
+                    guided = unconditional + guidance_scale * (conditional - unconditional)
+                images = images + delta * guided
+                if progress_callback is not None:
+                    progress_callback(step_index + 1, num_timesteps)
+
+            images = images.to(dtype=torch.float).clamp_(-1.0, 1.0)
+            return [tensor_to_pil(image, unnormalize=True) for image in images]
+
+        pipeline._sample = MethodType(sample_with_progress, pipeline)
+
     def _get_pipeline(self):
         if self._pipeline is not None:
             return self._pipeline
@@ -86,9 +143,16 @@ class FashnVtonService:
         except Exception as error:
             raise FashnVtonError("Не удалось загрузить FASHN VTON. Проверьте CUDA, веса и свободную VRAM.") from error
 
-    def generate(self, person_path: Path, garment_path: Path, output_path: Path) -> Path:
+    def generate(
+        self,
+        person_path: Path,
+        garment_path: Path,
+        output_path: Path,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> Path:
         try:
             pipeline = self._get_pipeline()
+            self._install_progress_sampler(pipeline, progress_callback)
             # Release cache held by a previous request before the fixed-size
             # FASHN denoising pass starts.
             try:

@@ -10,8 +10,7 @@ python scripts/detect_gpu.py
 
 if [ ! -f "weights/fashn-vton-1.5/model.safetensors" ]; then
   mkdir -p weights/fashn-vton-1.5
-  python -m fashn_vton.scripts.download_weights --weights-dir weights/fashn-vton-1.5 || \
-    python scripts/download_fashn_weights.py --weights-dir weights/fashn-vton-1.5
+  python scripts/download_fashn_weights.py --weights-dir weights/fashn-vton-1.5
 fi
 
 echo "Setup complete. Copy .env.example to .env and set TELEGRAM_BOT_TOKEN manually."

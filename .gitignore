@@ -1,0 +1,17 @@
+.env
+outputs/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.streamlit/
+.venv/
+data/inputs/*
+!data/inputs/.gitkeep
+data/outputs/*
+!data/outputs/.gitkeep
+data/tmp/*
+!data/tmp/.gitkeep
+weights/
+models/
+.cache/
+vibe_images/

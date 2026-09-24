@@ -1,0 +1,15 @@
+aiogram>=3.20,<4
+httpx>=0.28,<1
+torch>=2.5
+diffusers>=0.35
+transformers>=4.51
+accelerate>=1.4
+sentencepiece>=0.2
+pillow>=10
+python-dotenv>=1
+loguru>=0.7
+pydantic-settings>=2.7
+pytest>=8
+# Main local VTON backend (Apache-2.0); install pulls the inference package,
+# while scripts/setup_server.sh downloads its weights separately.
+fashn-vton @ git+https://github.com/fashn-AI/fashn-vton-1.5.git

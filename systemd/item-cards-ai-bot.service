@@ -1,0 +1,16 @@
+[Unit]
+Description=Item Cards AI Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gregory
+WorkingDirectory=/home/gregory/item_cards_ai
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/gregory/item_cards_ai/.venv/bin/python -m app.bot
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -26,6 +26,18 @@ async def main() -> None:
     dispatcher.include_router(start_router)
     dispatcher.include_router(make_router(settings))
     logger.info("Item Cards AI bot started")
+    # Confirm this specific aiohttp/SOCKS session before entering long polling.
+    # A short timeout prevents a worker that looks alive but never subscribes
+    # to Telegram updates.
+    while True:
+        try:
+            profile = await bot.get_me(request_timeout=15)
+            bot._me = profile
+            logger.info(f"Telegram connection ready: @{profile.username}")
+            break
+        except (TelegramNetworkError, asyncio.TimeoutError):
+            logger.exception("Telegram connection failed; retrying in 5 seconds")
+            await asyncio.sleep(5)
     # fic_comp occasionally times out while opening Telegram's HTTPS endpoint.
     # Keep the worker alive and retry transient network failures instead of
     # requiring a person to SSH in and restart it.

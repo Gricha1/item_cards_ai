@@ -40,6 +40,28 @@ class FashnVtonService:
 
         model = pipeline.tryon_model
 
+        # RTX 20xx uses PyTorch's math SDPA fallback for this model's long
+        # image-token sequence.  It materializes an attention matrix large
+        # enough to OOM even after CFG batching is removed.  Split queries;
+        # keys and values stay shared and the result is mathematically the
+        # same attention operation.
+        import fashn_vton.tryon_mmdit as tryon_mmdit
+
+        if not getattr(tryon_mmdit, "_item_cards_chunked_attention", False):
+            attention_chunk_size = 128
+
+            def chunked_attention(query, key, value):
+                if query.shape[-2] <= attention_chunk_size:
+                    return torch.nn.functional.scaled_dot_product_attention(query, key, value)
+                chunks = []
+                for start in range(0, query.shape[-2], attention_chunk_size):
+                    chunk = query[..., start : start + attention_chunk_size, :]
+                    chunks.append(torch.nn.functional.scaled_dot_product_attention(chunk, key, value))
+                return torch.cat(chunks, dim=-2)
+
+            tryon_mmdit._attn_processor = chunked_attention
+            tryon_mmdit._item_cards_chunked_attention = True
+
         def forward_without_cfg(noisy_images, timesteps, **kwargs):
             kwargs["mask"] = torch.ones(
                 noisy_images.shape[0], device=noisy_images.device, dtype=torch.bool

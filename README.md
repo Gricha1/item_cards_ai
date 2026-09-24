@@ -37,6 +37,20 @@ tmux new -s itemcards 'bash scripts/run_bot.sh'
 
 Фото и результаты хранятся в `data/`, но исключены из Git. Шаблоны людей кладутся в `app/assets/templates/`; для реальных каталожных результатов замените их на собственные изображения моделей с подтверждёнными правами использования.
 
+## RTX 2070 / 8 GB
+
+Для 8 ГБ GPU включите `FASHN_LOW_MEMORY=true`. Режим не дублирует batch для
+classifier-free guidance и чанками считает attention; он немного медленнее, но
+позволяет FASHN запускаться вместе с другими процессами на GPU. Проверить веса
+и генерацию без Telegram можно так:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+python scripts/smoke_fashn.py \
+  --person /path/to/person.png --garment /path/to/garment.png \
+  --output data/outputs/smoke.png --low-memory --steps 20
+```
+
 ## Конфигурация
 
 Шаблон находится в [.env.example](.env.example). Никогда не добавляйте `.env`, токен Telegram или ключи Hugging Face в Git. Для Qwen требуются существенно большие VRAM и дисковое пространство: его модельный репозиторий составляет около 57,7 ГБ.

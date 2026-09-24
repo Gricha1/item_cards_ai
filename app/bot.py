@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from aiogram import Bot, Dispatcher
+from aiogram.exceptions import TelegramNetworkError
 from dotenv import load_dotenv
 from loguru import logger
 
@@ -23,7 +24,15 @@ async def main() -> None:
     dispatcher.include_router(start_router)
     dispatcher.include_router(make_router(settings))
     logger.info("Item Cards AI bot started")
-    await dispatcher.start_polling(bot)
+    # fic_comp occasionally times out while opening Telegram's HTTPS endpoint.
+    # Keep the worker alive and retry transient network failures instead of
+    # requiring a person to SSH in and restart it.
+    while True:
+        try:
+            await dispatcher.start_polling(bot, close_bot_session=False)
+        except (TelegramNetworkError, asyncio.TimeoutError):
+            logger.exception("Telegram connection failed; retrying in 5 seconds")
+            await asyncio.sleep(5)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ httpx>=0.28,<1
 torch==2.5.1+cu121
 # Newer ONNX Runtime CUDA wheels require CUDA 13 and make FASHN pose detection
 # silently fall back to CPU on the CUDA 12.1 server environment.
-onnxruntime-gpu==1.20.1
+onnxruntime-gpu==1.20.2
 diffusers>=0.35
 transformers>=4.51
 accelerate>=1.4

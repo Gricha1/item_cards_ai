@@ -33,9 +33,11 @@ class GenerationPipeline:
         self.qwen = QwenEditService(settings.qwen_enabled, settings.qwen_min_vram_gb)
         self.flux = FluxFallbackService(settings.flux_model_id)
 
-    def template_for(self, gender: str, framing: str) -> Path:
+    def template_for(self, gender: str, framing: str, age_range: str | None = None) -> Path:
         frame = "full" if framing == "full" else "waist"
-        path = Path(__file__).resolve().parent.parent / "assets" / "templates" / f"{gender}_{frame}.png"
+        templates_dir = Path(__file__).resolve().parent.parent / "assets" / "templates"
+        age_specific = templates_dir / f"{gender}_{frame}_{age_range}.png" if age_range else None
+        path = age_specific if age_specific and age_specific.exists() else templates_dir / f"{gender}_{frame}.png"
         if not path.exists():
             raise TemplateNotFoundError(
                 f"Не найден шаблон {path.name}. Добавьте собственное изображение модели в app/assets/templates/."
@@ -48,12 +50,15 @@ class GenerationPipeline:
         gender: str,
         framing: str,
         progress_callback: Callable[[str, int, int], None] | None = None,
+        *,
+        age_range: str | None = None,
+        seed: int = 42,
     ) -> list[GeneratedVariant]:
-        person_path = self.template_for(gender, framing)
+        person_path = self.template_for(gender, framing, age_range)
         first_path = unique_path(self.settings.output_dir)
         second_path = unique_path(self.settings.output_dir)
         first = self.fashn.generate(
-            person_path, garment_path, first_path, progress_callback, variant="first", seed=42
+            person_path, garment_path, first_path, progress_callback, variant="first", seed=seed
         )
 
         try:
@@ -76,7 +81,7 @@ class GenerationPipeline:
                     second_path,
                     progress_callback,
                     variant="second",
-                    seed=43,
+                    seed=seed + 1,
                 )
                 return [
                     GeneratedVariant("Вариант 1 — FASHN VTON", first),

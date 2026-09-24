@@ -15,3 +15,4 @@ weights/
 models/
 .cache/
 vibe_images/
+app/assets/welcome/*.png

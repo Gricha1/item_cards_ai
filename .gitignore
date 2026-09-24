@@ -16,3 +16,4 @@ models/
 .cache/
 vibe_images/
 app/assets/welcome/*.png
+app/assets/templates/*.png

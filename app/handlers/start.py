@@ -11,7 +11,15 @@ WELCOME_IMAGE = Path(__file__).resolve().parent.parent / "assets" / "welcome" / 
 def welcome_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="✨ Создать модель", callback_data="welcome:create"),
-        InlineKeyboardButton(text="ℹ️ Как это работает", callback_data="welcome:help"),
+        InlineKeyboardButton(
+            text="ℹ️ Расскажите о себе, госпожа Полина", callback_data="welcome:help"
+        ),
+    ]])
+
+
+def create_only_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="✨ Создать модель", callback_data="welcome:create"),
     ]])
 
 
@@ -33,9 +41,10 @@ async def begin_generation(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data == "welcome:help")
-async def show_help(callback: CallbackQuery) -> None:
+async def show_about_polina(callback: CallbackQuery) -> None:
     await callback.answer()
     await callback.message.answer(
-        "Отправьте фото одежды, затем выберите пол модели и кадр. "
-        "Генерация двух вариантов обычно занимает несколько минут."
+        "Меня зовут госпожа Полина, и я такая красотка, которую ты еще не видел, "
+        "у меня есть муж — Григорий, большего тебе знать не надо",
+        reply_markup=create_only_keyboard(),
     )

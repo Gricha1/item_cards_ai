@@ -37,12 +37,17 @@ class GenerationPipeline:
         frame = "full" if framing == "full" else "waist"
         templates_dir = Path(__file__).resolve().parent.parent / "assets" / "templates"
         age_specific = templates_dir / f"{gender}_{frame}_{age_range}.png" if age_range else None
-        path = age_specific if age_specific and age_specific.exists() else templates_dir / f"{gender}_{frame}.png"
-        if not path.exists():
-            raise TemplateNotFoundError(
-                f"Не найден шаблон {path.name}. Добавьте собственное изображение модели в app/assets/templates/."
-            )
-        return path
+        requested = templates_dir / f"{gender}_{frame}.png"
+        alternate_frame = "waist" if frame == "full" else "full"
+        fallback = templates_dir / f"{gender}_{alternate_frame}.png"
+
+        for candidate in (age_specific, requested, fallback):
+            if candidate and candidate.exists():
+                return candidate
+
+        raise TemplateNotFoundError(
+            f"Не найден шаблон {requested.name}. Добавьте собственное изображение модели в app/assets/templates/."
+        )
 
     def generate(
         self,

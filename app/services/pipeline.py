@@ -23,7 +23,12 @@ class GeneratedVariant:
 class GenerationPipeline:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.fashn = FashnVtonService(settings.fashn_weights_dir, settings.fashn_category)
+        self.fashn = FashnVtonService(
+            settings.fashn_weights_dir,
+            settings.fashn_category,
+            low_memory=settings.fashn_low_memory,
+            num_timesteps=settings.fashn_num_timesteps,
+        )
         self.qwen = QwenEditService(settings.qwen_enabled, settings.qwen_min_vram_gb)
         self.flux = FluxFallbackService(settings.flux_model_id)
 

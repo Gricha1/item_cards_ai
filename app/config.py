@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     input_dir: Path = BASE_DIR / "data" / "inputs"
     fashn_weights_dir: Path = BASE_DIR / "weights" / "fashn-vton-1.5"
     fashn_category: str = "tops"
+    # FASHN normally duplicates the denoising batch for classifier-free guidance.
+    # On 8 GB cards this can exceed VRAM; low-memory mode uses the conditional
+    # pass only, trading a little visual quality for a working local result.
+    fashn_low_memory: bool = False
+    fashn_num_timesteps: int = 20
     flux_model_id: str = "black-forest-labs/FLUX.1-schnell"
     log_level: str = "INFO"
 

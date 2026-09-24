@@ -6,6 +6,7 @@ from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, Inli
 
 router = Router()
 WELCOME_IMAGE = Path(__file__).resolve().parent.parent / "assets" / "welcome" / "polina_welcome.png"
+WELCOME_STICKER = Path(__file__).resolve().parent.parent / "assets" / "welcome" / "polina_welcome.webp"
 
 
 def welcome_keyboard() -> InlineKeyboardMarkup:
@@ -26,6 +27,10 @@ def create_only_keyboard() -> InlineKeyboardMarkup:
 @router.message(CommandStart())
 async def start(message: Message) -> None:
     caption = "Привет, раб. Я госпожа Полина, и я могу тебе сгенерировать модель для карточек. Выбери опцию:"
+    if WELCOME_STICKER.exists():
+        await message.answer_sticker(FSInputFile(WELCOME_STICKER))
+        await message.answer(caption, reply_markup=welcome_keyboard())
+        return
     if WELCOME_IMAGE.exists():
         await message.answer_photo(
             FSInputFile(WELCOME_IMAGE), caption=caption, reply_markup=welcome_keyboard()

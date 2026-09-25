@@ -8,5 +8,5 @@ RUN pip install --no-cache-dir --no-deps \
     "diffusers==0.40.0" "huggingface-hub==0.36.0" "python-multipart==0.0.20"
 
 WORKDIR /opt/qwen-worker
-COPY qwen_worker.py /opt/qwen-worker/qwen_worker.py
+COPY docker/qwen-worker/qwen_worker.py /opt/qwen-worker/qwen_worker.py
 ENTRYPOINT ["python3", "/opt/qwen-worker/qwen_worker.py"]

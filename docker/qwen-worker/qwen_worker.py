@@ -35,7 +35,11 @@ def pipeline() -> QwenImageEditPipeline:
             dtype=torch.bfloat16,
             quantization_config=quant_config,
         )
-        _pipeline.enable_model_cpu_offload()
+        # A 24 GB TITAN RTX cannot hold Qwen Image Edit plus its inference
+        # activations at once.  Sequential offload keeps only the active
+        # component on the GPU; it is slower, but makes the worker usable on
+        # this GPU instead of failing on the first denoising step.
+        _pipeline.enable_sequential_cpu_offload()
     return _pipeline
 
 

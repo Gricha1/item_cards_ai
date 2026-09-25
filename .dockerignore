@@ -1,0 +1,12 @@
+.git
+.venv
+__pycache__
+.pytest_cache
+.env
+data
+weights
+models
+outputs
+vibe_images
+app/assets/templates
+app/assets/welcome

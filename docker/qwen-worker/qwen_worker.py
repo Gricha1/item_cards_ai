@@ -37,7 +37,7 @@ def pipeline() -> QwenImageEditPipeline:
             MODEL_ID,
             dtype=torch.bfloat16,
             quantization_config=quant_config,
-            device_map="balanced",
+            device_map="auto",
             max_memory={0: "23GiB", 1: "23GiB"},
         )
     return _pipeline

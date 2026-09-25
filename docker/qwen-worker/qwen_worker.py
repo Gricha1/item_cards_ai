@@ -34,7 +34,6 @@ def pipeline() -> QwenImageEditPipeline:
             MODEL_ID,
             dtype=torch.bfloat16,
             quantization_config=quant_config,
-            device_map="cuda",
         )
         _pipeline.enable_model_cpu_offload()
     return _pipeline

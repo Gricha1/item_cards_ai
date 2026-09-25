@@ -30,7 +30,9 @@ class GenerationPipeline:
             low_memory=settings.fashn_low_memory,
             num_timesteps=settings.fashn_num_timesteps,
         )
-        self.qwen = QwenEditService(settings.qwen_enabled, settings.qwen_min_vram_gb)
+        self.qwen = QwenEditService(
+            settings.qwen_enabled, settings.qwen_min_vram_gb, settings.qwen_remote_url
+        )
         self.flux = FluxFallbackService(settings.flux_model_id)
 
     def template_for(self, gender: str, framing: str, age_range: str | None = None) -> Path:

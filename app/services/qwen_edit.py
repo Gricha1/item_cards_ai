@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import httpx
 from PIL import Image
 
 
@@ -14,9 +15,10 @@ class QwenEditService:
 
     MODEL_ID = "Qwen/Qwen-Image-Edit"
 
-    def __init__(self, enabled: bool, min_vram_gb: int) -> None:
+    def __init__(self, enabled: bool, min_vram_gb: int, remote_url: str | None = None) -> None:
         self.enabled = enabled
         self.min_vram_gb = min_vram_gb
+        self.remote_url = remote_url.rstrip("/") if remote_url else None
         self._pipeline = None
 
     def _assert_available(self) -> None:
@@ -49,6 +51,9 @@ class QwenEditService:
         return self._pipeline
 
     def generate(self, person_path: Path, garment_path: Path, output_path: Path, gender: str, framing: str) -> Path:
+        if self.remote_url:
+            return self._generate_remote(person_path, garment_path, output_path, gender, framing)
+
         prompt = (
             f"Generate a realistic ecommerce-style image of an adult {gender} model, {framing}, "
             "wearing the garment from the second reference image. Preserve garment color, silhouette, "
@@ -63,3 +68,23 @@ class QwenEditService:
             raise
         except Exception as error:
             raise QwenUnavailableError("Qwen-Image-Edit не смог создать изображение.") from error
+
+    def _generate_remote(
+        self, person_path: Path, garment_path: Path, output_path: Path, gender: str, framing: str
+    ) -> Path:
+        try:
+            with person_path.open("rb") as person_file, garment_path.open("rb") as garment_file:
+                response = httpx.post(
+                    f"{self.remote_url}/generate",
+                    data={"gender": gender, "framing": framing},
+                    files={
+                        "person": (person_path.name, person_file, "image/png"),
+                        "garment": (garment_path.name, garment_file, "image/png"),
+                    },
+                    timeout=900.0,
+                )
+            response.raise_for_status()
+            output_path.write_bytes(response.content)
+            return output_path
+        except Exception as error:
+            raise QwenUnavailableError("Удалённый Qwen-Image-Edit недоступен.") from error

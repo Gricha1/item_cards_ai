@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     model_device: str = "cuda"
     qwen_enabled: bool = False
     qwen_min_vram_gb: int = 20
+    qwen_remote_url: str | None = None
     output_dir: Path = BASE_DIR / "data" / "outputs"
     temp_dir: Path = BASE_DIR / "data" / "tmp"
     input_dir: Path = BASE_DIR / "data" / "inputs"

@@ -1,10 +1,11 @@
 FROM vllm/vllm-openai:v0.8.5
 
 USER root
-RUN pip install --no-cache-dir \
-    "diffusers>=0.40" "transformers>=4.57" "accelerate>=1.10" \
-    "bitsandbytes>=0.46" "fastapi>=0.115" "uvicorn[standard]>=0.34" \
-    "python-multipart>=0.0.20" "pillow>=10"
+# The vLLM base already provides CUDA 12.4, PyTorch, Transformers, Accelerate,
+# BitsAndBytes, FastAPI and Uvicorn. Avoid resolving/reinstalling PyTorch here:
+# it can take minutes and pull incompatible CUDA wheels.
+RUN pip install --no-cache-dir --no-deps \
+    "diffusers==0.40.0" "huggingface-hub==0.36.0" "python-multipart==0.0.20"
 
 WORKDIR /opt/qwen-worker
 COPY qwen_worker.py /opt/qwen-worker/qwen_worker.py

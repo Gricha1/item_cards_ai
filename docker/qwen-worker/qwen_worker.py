@@ -30,16 +30,15 @@ def pipeline() -> QwenImageEditPipeline:
             },
             components_to_quantize=["transformer", "text_encoder"],
         )
+        # The denoising activations do not fit beside the quantized model on
+        # one 24 GB TITAN RTX.  The worker receives two otherwise idle GPUs,
+        # so let Accelerate balance its components across both of them.
         _pipeline = QwenImageEditPipeline.from_pretrained(
             MODEL_ID,
             dtype=torch.bfloat16,
             quantization_config=quant_config,
+            device_map="balanced",
         )
-        # A 24 GB TITAN RTX cannot hold Qwen Image Edit plus its inference
-        # activations at once.  Sequential offload keeps only the active
-        # component on the GPU; it is slower, but makes the worker usable on
-        # this GPU instead of failing on the first denoising step.
-        _pipeline.enable_sequential_cpu_offload()
     return _pipeline
 
 

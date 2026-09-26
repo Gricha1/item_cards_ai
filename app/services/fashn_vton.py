@@ -148,7 +148,7 @@ class FashnVtonService:
         except Exception as error:
             raise FashnVtonError("Не удалось загрузить FASHN VTON. Проверьте CUDA, веса и свободную VRAM.") from error
 
-    def _generate_remote(self, person_path: Path, garment_path: Path, output_path: Path) -> Path:
+    def _generate_remote(self, person_path: Path, garment_path: Path, output_path: Path, seed: int) -> Path:
         try:
             with person_path.open("rb") as person_file, garment_path.open("rb") as garment_file:
                 response = httpx.post(
@@ -157,6 +157,7 @@ class FashnVtonService:
                         "person": (person_path.name, person_file, "image/png"),
                         "garment": (garment_path.name, garment_file, "image/png"),
                     },
+                    data={"seed": str(seed)},
                     timeout=300.0,
                 )
             response.raise_for_status()
@@ -176,7 +177,7 @@ class FashnVtonService:
         seed: int = 42,
     ) -> Path:
         if self.remote_url:
-            return self._generate_remote(person_path, garment_path, output_path)
+            return self._generate_remote(person_path, garment_path, output_path, seed)
         try:
             pipeline = self._get_pipeline()
             self._install_progress_sampler(pipeline, progress_callback, variant)

@@ -4,7 +4,7 @@ from io import BytesIO
 from threading import Lock
 
 import torch
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from PIL import Image
 
@@ -30,7 +30,9 @@ def health() -> dict[str, bool]:
 
 
 @app.post("/generate")
-async def generate(person: UploadFile = File(...), garment: UploadFile = File(...)) -> Response:
+async def generate(
+    person: UploadFile = File(...), garment: UploadFile = File(...), seed: int = Form(42)
+) -> Response:
     try:
         person_image = Image.open(BytesIO(await person.read())).convert("RGB")
         garment_image = Image.open(BytesIO(await garment.read())).convert("RGB")
@@ -40,7 +42,7 @@ async def generate(person: UploadFile = File(...), garment: UploadFile = File(..
                 garment_image=garment_image,
                 category="tops",
                 num_timesteps=30,
-                seed=42,
+                seed=seed,
             )
         buffer = BytesIO()
         result.images[0].save(buffer, format="PNG")

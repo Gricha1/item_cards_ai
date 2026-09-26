@@ -69,6 +69,23 @@ class GenerationPipeline:
             person_path, garment_path, first_path, progress_callback, variant="first", seed=seed
         )
 
+        # The ML4 FASHN worker is the fast production route. Qwen is kept as
+        # an opt-in quality experiment because its layer-offloaded 20B model
+        # takes tens of minutes on the available 24 GB GPU.
+        if self.fashn.remote_url:
+            second = self.fashn.generate(
+                person_path,
+                garment_path,
+                second_path,
+                progress_callback,
+                variant="second",
+                seed=seed + 1,
+            )
+            return [
+                GeneratedVariant("Вариант 1 — FASHN VTON", first),
+                GeneratedVariant("Вариант 2 — FASHN VTON", second),
+            ]
+
         try:
             second = self.qwen.generate(person_path, garment_path, second_path, gender, framing)
             return [GeneratedVariant("Вариант 1 — FASHN VTON", first), GeneratedVariant("Вариант 2 — Qwen Image Edit", second)]

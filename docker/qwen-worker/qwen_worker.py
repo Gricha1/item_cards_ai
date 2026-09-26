@@ -4,7 +4,7 @@ from io import BytesIO
 from threading import Lock
 
 import torch
-from diffusers import QwenImageEditPipeline, QwenImageTransformer2DModel
+from diffusers import BitsAndBytesConfig, QwenImageEditPipeline, QwenImageTransformer2DModel
 from diffusers.quantizers import PipelineQuantizationConfig
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -26,11 +26,7 @@ def pipeline() -> QwenImageEditPipeline:
             "bnb_4bit_quant_type": "nf4",
             "bnb_4bit_compute_dtype": torch.bfloat16,
         }
-        transformer_quant_config = PipelineQuantizationConfig(
-            quant_backend="bitsandbytes_4bit",
-            quant_kwargs=quant_kwargs,
-            components_to_quantize=["transformer"],
-        )
+        transformer_quant_config = BitsAndBytesConfig(**quant_kwargs)
 
         # Diffusers only balances whole *pipeline* components, which leaves
         # Qwen's transformer too large for one 24 GB GPU.  Loading that

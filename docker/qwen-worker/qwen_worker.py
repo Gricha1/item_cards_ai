@@ -50,17 +50,18 @@ def pipeline() -> QwenImagePipeline:
             "offload_dtype": "disk",
             "offload_device": "disk",
             # TITAN RTX (Turing, compute capability 7.5) has neither native
-            # FP8 nor BF16 instructions.  FP16 is the compatible low-VRAM
-            # transport/computation format on this GPU generation.
-            "onload_dtype": torch.float16,
+            # FP8 nor BF16 instructions. Its half-precision kernels are not
+            # reliable for Qwen's 3D VAE either, so use FP32 one layer at a
+            # time while retaining disk offload for the full 20B model.
+            "onload_dtype": torch.float32,
             "onload_device": "cpu",
-            "preparing_dtype": torch.float16,
+            "preparing_dtype": torch.float32,
             "preparing_device": "cuda",
-            "computation_dtype": torch.float16,
+            "computation_dtype": torch.float32,
             "computation_device": "cuda",
         }
         _pipeline = QwenImagePipeline.from_pretrained(
-            torch_dtype=torch.float16,
+            torch_dtype=torch.float32,
             device="cuda",
             model_configs=[
                 ModelConfig(

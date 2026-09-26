@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import glob
 from io import BytesIO
+from pathlib import Path
 from threading import Lock
 
 import torch
@@ -11,7 +13,7 @@ from PIL import Image
 
 # Existing model snapshot mounted by Docker; changing engines does not require
 # another 54 GB download.
-MODEL_DIR = "/models/hub/models--Qwen--Qwen-Image-Edit/snapshots/ac7f9318f633fc4b5778c59367c8128225f1e3de"
+MODEL_DIR = Path("/models/hub/models--Qwen--Qwen-Image-Edit/snapshots/ac7f9318f633fc4b5778c59367c8128225f1e3de")
 app = FastAPI(title="ItemCards AI Qwen worker")
 _pipeline: QwenImagePipeline | None = None
 _lock = Lock()
@@ -36,11 +38,14 @@ def pipeline() -> QwenImagePipeline:
             torch_dtype=torch.bfloat16,
             device="cuda",
             model_configs=[
-                ModelConfig(MODEL_DIR, "transformer/diffusion_pytorch_model*.safetensors", **vram_config),
-                ModelConfig(MODEL_DIR, "text_encoder/model*.safetensors", **vram_config),
-                ModelConfig(MODEL_DIR, "vae/diffusion_pytorch_model.safetensors", **vram_config),
+                ModelConfig(
+                    path=glob.glob(str(MODEL_DIR / "transformer/diffusion_pytorch_model*.safetensors")),
+                    **vram_config,
+                ),
+                ModelConfig(path=glob.glob(str(MODEL_DIR / "text_encoder/model*.safetensors")), **vram_config),
+                ModelConfig(path=str(MODEL_DIR / "vae/diffusion_pytorch_model.safetensors"), **vram_config),
             ],
-            processor_config=ModelConfig(MODEL_DIR, "processor/"),
+            processor_config=ModelConfig(path=str(MODEL_DIR / "processor")),
             vram_limit=torch.cuda.mem_get_info("cuda")[1] / 1024**3 - 0.5,
         )
     return _pipeline

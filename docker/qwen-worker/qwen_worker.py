@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import glob
+import traceback
 from io import BytesIO
 from pathlib import Path
 from threading import Lock
@@ -111,6 +112,10 @@ async def generate(
         image.save(buffer, format="PNG")
         return Response(buffer.getvalue(), media_type="image/png")
     except Exception as error:
+        # Keep the complete CUDA location in container logs.  The HTTP client
+        # only needs a concise 503 response, but unsupported Turing kernels
+        # otherwise lose their actionable traceback here.
+        print(traceback.format_exc(), flush=True)
         raise HTTPException(status_code=503, detail=str(error)) from error
 
 

@@ -81,7 +81,9 @@ class QwenEditService:
                         "person": (person_path.name, person_file, "image/png"),
                         "garment": (garment_path.name, garment_file, "image/png"),
                     },
-                    timeout=900.0,
+                    # Layer-offloaded Qwen on ML4 can take over 15 minutes
+                    # for a full-quality 30-step render on the available GPU.
+                    timeout=2400.0,
                 )
             response.raise_for_status()
             output_path.write_bytes(response.content)

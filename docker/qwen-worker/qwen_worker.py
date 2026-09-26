@@ -50,18 +50,17 @@ def pipeline() -> QwenImagePipeline:
             "offload_dtype": "disk",
             "offload_device": "disk",
             # TITAN RTX (Turing, compute capability 7.5) has neither native
-            # FP8 nor BF16 instructions. Its half-precision kernels are not
-            # reliable for Qwen's 3D VAE either, so use FP32 one layer at a
-            # time while retaining disk offload for the full 20B model.
-            "onload_dtype": torch.float32,
+            # FP8 nor BF16 instructions. FP16 is the compatible low-VRAM
+            # transport/computation format on the healthy GPU №2.
+            "onload_dtype": torch.float16,
             "onload_device": "cpu",
-            "preparing_dtype": torch.float32,
+            "preparing_dtype": torch.float16,
             "preparing_device": "cuda",
-            "computation_dtype": torch.float32,
+            "computation_dtype": torch.float16,
             "computation_device": "cuda",
         }
         _pipeline = QwenImagePipeline.from_pretrained(
-            torch_dtype=torch.float32,
+            torch_dtype=torch.float16,
             device="cuda",
             model_configs=[
                 ModelConfig(
@@ -72,7 +71,7 @@ def pipeline() -> QwenImagePipeline:
                 ModelConfig(path=str(MODEL_DIR / "vae/diffusion_pytorch_model.safetensors"), **vram_config),
             ],
             processor_config=ModelConfig(path=str(MODEL_DIR / "processor")),
-            vram_limit=torch.cuda.mem_get_info("cuda")[1] / 1024**3 - 0.5,
+            vram_limit=torch.cuda.mem_get_info("cuda")[1] / 1024**3 - 1.5,
         )
         # The global SDPA switches above are not sufficient because
         # Transformers still enters its SDPA integration.  Set every nested

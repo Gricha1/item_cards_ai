@@ -19,6 +19,15 @@ def _disable_optional_compile(function, *args, **kwargs):
 # On Turing that creates dozens of compiler workers before any image work.
 torch.compile = _disable_optional_compile
 
+# PyTorch 2.6 may dispatch scaled-dot-product attention to a cuDNN backend
+# that is not compatible with the TITAN RTX (Turing).  Qwen's visual encoder
+# reaches that path before diffusion starts and the driver reports an illegal
+# instruction.  The math backend is slower but portable and uses FP16 here.
+torch.backends.cuda.enable_flash_sdp(False)
+torch.backends.cuda.enable_mem_efficient_sdp(False)
+torch.backends.cuda.enable_cudnn_sdp(False)
+torch.backends.cuda.enable_math_sdp(True)
+
 from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response

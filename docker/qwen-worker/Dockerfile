@@ -1,11 +1,11 @@
 FROM vllm/vllm-openai:v0.8.5
 
 USER root
-# Keep CUDA/PyTorch from the vLLM base but update the model stack together.
-# Qwen Image Edit needs current Diffusers, Transformers and Hugging Face Hub.
+# DiffSynth reads the mounted safetensors directly.  Do not install the old
+# Diffusers worker stack here: its Hub 1.x requirement conflicts with the
+# Transformers 4.x API required by DiffSynth's Qwen2.5-VL integration.
 RUN pip install --no-cache-dir --upgrade \
-    "diffusers==0.40.0" "transformers==4.49.0" "accelerate>=1.10" \
-    "huggingface-hub==0.36.0" "hf-xet==1.6.0" "bitsandbytes>=0.46.1" \
+    "transformers==4.49.0" "accelerate>=1.10" \
     "python-multipart==0.0.20" \
     "git+https://github.com/modelscope/DiffSynth-Studio.git"
 

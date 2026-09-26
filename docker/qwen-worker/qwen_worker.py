@@ -73,6 +73,13 @@ def pipeline() -> QwenImagePipeline:
             processor_config=ModelConfig(path=str(MODEL_DIR / "processor")),
             vram_limit=torch.cuda.mem_get_info("cuda")[1] / 1024**3 - 0.5,
         )
+        # The global SDPA switches above are not sufficient because
+        # Transformers still enters its SDPA integration.  Set every nested
+        # Qwen vision config to eager attention, avoiding that kernel entirely.
+        for module in _pipeline.text_encoder.modules():
+            config = getattr(module, "config", None)
+            if config is not None and hasattr(config, "_attn_implementation"):
+                config._attn_implementation = "eager"
     return _pipeline
 
 

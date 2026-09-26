@@ -6,6 +6,18 @@ from pathlib import Path
 from threading import Lock
 
 import torch
+
+
+def _disable_optional_compile(function, *args, **kwargs):
+    """Flex Attention compilation is unsupported/very slow on TITAN RTX."""
+    return function
+
+
+# DiffSynth imports Flex Attention at module import time and wraps it in
+# torch.compile even though this worker uses the standard attention backend.
+# On Turing that creates dozens of compiler workers before any image work.
+torch.compile = _disable_optional_compile
+
 from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response

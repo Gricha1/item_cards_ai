@@ -6,7 +6,8 @@ USER root
 RUN pip install --no-cache-dir --upgrade \
     "diffusers==0.40.0" "transformers==5.17.0" "accelerate>=1.10" \
     "huggingface-hub==1.33.0" "hf-xet==1.6.0" "bitsandbytes>=0.46.1" \
-    "python-multipart==0.0.20"
+    "python-multipart==0.0.20" \
+    "git+https://github.com/modelscope/DiffSynth-Studio.git"
 
 WORKDIR /opt/qwen-worker
 COPY docker/qwen-worker/qwen_worker.py /opt/qwen-worker/qwen_worker.py

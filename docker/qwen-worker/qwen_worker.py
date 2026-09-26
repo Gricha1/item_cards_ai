@@ -4,58 +4,56 @@ from io import BytesIO
 from threading import Lock
 
 import torch
-from diffusers import BitsAndBytesConfig, QwenImageEditPipeline, QwenImageTransformer2DModel
-from diffusers.quantizers import PipelineQuantizationConfig
+from diffsynth.pipelines.qwen_image import ModelConfig, QwenImagePipeline
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from PIL import Image
 
-MODEL_ID = "Qwen/Qwen-Image-Edit"
+# Existing model snapshot mounted by Docker; changing engines does not require
+# another 54 GB download.
+MODEL_DIR = "/models/hub/models--Qwen--Qwen-Image-Edit/snapshots/ac7f9318f633fc4b5778c59367c8128225f1e3de"
 app = FastAPI(title="ItemCards AI Qwen worker")
-_pipeline: QwenImageEditPipeline | None = None
+_pipeline: QwenImagePipeline | None = None
 _lock = Lock()
 
 
-def pipeline() -> QwenImageEditPipeline:
+def pipeline() -> QwenImagePipeline:
     global _pipeline
     if _pipeline is None:
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA is unavailable inside the Qwen worker")
-        quant_kwargs = {
-            "load_in_4bit": True,
-            "bnb_4bit_quant_type": "nf4",
-            "bnb_4bit_compute_dtype": torch.bfloat16,
+        vram_config = {
+            "offload_dtype": "disk",
+            "offload_device": "disk",
+            "onload_dtype": torch.float8_e4m3fn,
+            "onload_device": "cpu",
+            "preparing_dtype": torch.float8_e4m3fn,
+            "preparing_device": "cuda",
+            "computation_dtype": torch.bfloat16,
+            "computation_device": "cuda",
         }
-        transformer_quant_config = BitsAndBytesConfig(**quant_kwargs)
-
-        # Diffusers only balances whole *pipeline* components, which leaves
-        # Qwen's transformer too large for one 24 GB GPU.  Loading that
-        # component separately lets Accelerate split its blocks across both
-        # visible GPUs before the pipeline is assembled.
-        transformer = QwenImageTransformer2DModel.from_pretrained(
-            MODEL_ID,
-            subfolder="transformer",
-            dtype=torch.bfloat16,
-            quantization_config=transformer_quant_config,
-            device_map="auto",
-            # Leave headroom for the text encoder, VAE and the denoising
-            # activations on GPU 0.  Ten GiB per card forces the transformer
-            # blocks to be placed on both visible GPUs.
-            max_memory={0: "10GiB", 1: "10GiB"},
-        )
-        text_quant_config = PipelineQuantizationConfig(
-            quant_backend="bitsandbytes_4bit",
-            quant_kwargs=quant_kwargs,
-            components_to_quantize=["text_encoder"],
-        )
-        _pipeline = QwenImageEditPipeline.from_pretrained(
-            MODEL_ID,
-            dtype=torch.bfloat16,
-            transformer=transformer,
-            quantization_config=text_quant_config,
-            device_map="cuda",
+        _pipeline = QwenImagePipeline.from_pretrained(
+            torch_dtype=torch.bfloat16,
+            device="cuda",
+            model_configs=[
+                ModelConfig(MODEL_DIR, "transformer/diffusion_pytorch_model*.safetensors", **vram_config),
+                ModelConfig(MODEL_DIR, "text_encoder/model*.safetensors", **vram_config),
+                ModelConfig(MODEL_DIR, "vae/diffusion_pytorch_model.safetensors", **vram_config),
+            ],
+            processor_config=ModelConfig(MODEL_DIR, "processor/"),
+            vram_limit=torch.cuda.mem_get_info("cuda")[1] / 1024**3 - 0.5,
         )
     return _pipeline
+
+
+def reference_sheet(person: Image.Image, garment: Image.Image) -> Image.Image:
+    """Provide the single-image Qwen Edit checkpoint a clear two-panel reference."""
+    canvas = Image.new("RGB", (1024, 768), "white")
+    for source, x in ((person, 0), (garment, 512)):
+        panel = source.copy()
+        panel.thumbnail((496, 744))
+        canvas.paste(panel, (x + (512 - panel.width) // 2, (768 - panel.height) // 2))
+    return canvas
 
 
 @app.get("/health")
@@ -71,24 +69,24 @@ async def generate(
     framing: str = Form(...),
 ) -> Response:
     prompt = (
-        f"Create a realistic ecommerce image of an adult {gender} model, {framing}, "
-        "wearing the garment from the second reference image. Preserve the garment's color, "
-        "silhouette, zipper details, collar shape and material. Plain light studio background, "
-        "marketplace catalog photography, no text, no watermark."
+        "This is a two-panel reference. LEFT: an adult "
+        f"{gender} model; RIGHT: a garment. Create one realistic ecommerce photo of the left "
+        "model wearing the exact right garment. Preserve garment color, material, silhouette, zipper and collar. "
+        f"{framing} framing, clean light studio background, catalog photography, no text, no watermark."
     )
     try:
         person_image = Image.open(BytesIO(await person.read())).convert("RGB")
         garment_image = Image.open(BytesIO(await garment.read())).convert("RGB")
         with _lock:
             image = pipeline()(
-                image=[person_image, garment_image],
                 prompt=prompt,
-                negative_prompt="distorted anatomy, duplicate sleeves, duplicate arms, extra limbs, watermark, text",
-                true_cfg_scale=3.5,
+                edit_image=reference_sheet(person_image, garment_image),
+                edit_image_auto_resize=True,
+                seed=42,
                 num_inference_steps=30,
                 width=576,
                 height=768,
-            ).images[0]
+            )
         buffer = BytesIO()
         image.save(buffer, format="PNG")
         return Response(buffer.getvalue(), media_type="image/png")

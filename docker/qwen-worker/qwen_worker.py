@@ -86,6 +86,8 @@ async def generate(
                 negative_prompt="distorted anatomy, duplicate sleeves, duplicate arms, extra limbs, watermark, text",
                 true_cfg_scale=3.5,
                 num_inference_steps=30,
+                width=576,
+                height=768,
             ).images[0]
         buffer = BytesIO()
         image.save(buffer, format="PNG")

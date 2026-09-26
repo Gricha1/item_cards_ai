@@ -38,7 +38,10 @@ def pipeline() -> QwenImageEditPipeline:
             dtype=torch.bfloat16,
             quantization_config=transformer_quant_config,
             device_map="auto",
-            max_memory={0: "23GiB", 1: "23GiB"},
+            # Leave headroom for the text encoder, VAE and the denoising
+            # activations on GPU 0.  Ten GiB per card forces the transformer
+            # blocks to be placed on both visible GPUs.
+            max_memory={0: "10GiB", 1: "10GiB"},
         )
         text_quant_config = PipelineQuantizationConfig(
             quant_backend="bitsandbytes_4bit",

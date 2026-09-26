@@ -4,7 +4,7 @@ from io import BytesIO
 from threading import Lock
 
 import torch
-from diffusers import QwenImageEditPipeline
+from diffusers import QwenImageEditPipeline, QwenImageTransformer2DModel
 from diffusers.quantizers import PipelineQuantizationConfig
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -21,24 +21,40 @@ def pipeline() -> QwenImageEditPipeline:
     if _pipeline is None:
         if not torch.cuda.is_available():
             raise RuntimeError("CUDA is unavailable inside the Qwen worker")
-        quant_config = PipelineQuantizationConfig(
+        quant_kwargs = {
+            "load_in_4bit": True,
+            "bnb_4bit_quant_type": "nf4",
+            "bnb_4bit_compute_dtype": torch.bfloat16,
+        }
+        transformer_quant_config = PipelineQuantizationConfig(
             quant_backend="bitsandbytes_4bit",
-            quant_kwargs={
-                "load_in_4bit": True,
-                "bnb_4bit_quant_type": "nf4",
-                "bnb_4bit_compute_dtype": torch.bfloat16,
-            },
-            components_to_quantize=["transformer", "text_encoder"],
+            quant_kwargs=quant_kwargs,
+            components_to_quantize=["transformer"],
         )
-        # The denoising activations do not fit beside the quantized model on
-        # one 24 GB TITAN RTX.  The worker receives two otherwise idle GPUs,
-        # so let Accelerate balance its components across both of them.
+
+        # Diffusers only balances whole *pipeline* components, which leaves
+        # Qwen's transformer too large for one 24 GB GPU.  Loading that
+        # component separately lets Accelerate split its blocks across both
+        # visible GPUs before the pipeline is assembled.
+        transformer = QwenImageTransformer2DModel.from_pretrained(
+            MODEL_ID,
+            subfolder="transformer",
+            dtype=torch.bfloat16,
+            quantization_config=transformer_quant_config,
+            device_map="auto",
+            max_memory={0: "23GiB", 1: "23GiB"},
+        )
+        text_quant_config = PipelineQuantizationConfig(
+            quant_backend="bitsandbytes_4bit",
+            quant_kwargs=quant_kwargs,
+            components_to_quantize=["text_encoder"],
+        )
         _pipeline = QwenImageEditPipeline.from_pretrained(
             MODEL_ID,
             dtype=torch.bfloat16,
-            quantization_config=quant_config,
-            device_map="auto",
-            max_memory={0: "23GiB", 1: "23GiB"},
+            transformer=transformer,
+            quantization_config=text_quant_config,
+            device_map="cuda",
         )
     return _pipeline
 

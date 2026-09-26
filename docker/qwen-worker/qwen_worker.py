@@ -49,18 +49,17 @@ def pipeline() -> QwenImagePipeline:
         vram_config = {
             "offload_dtype": "disk",
             "offload_device": "disk",
-            # TITAN RTX (Turing, compute capability 7.5) has neither native
-            # FP8 nor BF16 instructions. FP16 is the compatible low-VRAM
-            # transport/computation format on the healthy GPU №2.
-            "onload_dtype": torch.float16,
+            # Use Qwen's native BF16 numerics. GPU №2 can execute it in the
+            # layer-offloaded path; FP16 decoded to a black image in the VAE.
+            "onload_dtype": torch.bfloat16,
             "onload_device": "cpu",
-            "preparing_dtype": torch.float16,
+            "preparing_dtype": torch.bfloat16,
             "preparing_device": "cuda",
-            "computation_dtype": torch.float16,
+            "computation_dtype": torch.bfloat16,
             "computation_device": "cuda",
         }
         _pipeline = QwenImagePipeline.from_pretrained(
-            torch_dtype=torch.float16,
+            torch_dtype=torch.bfloat16,
             device="cuda",
             model_configs=[
                 ModelConfig(
@@ -104,6 +103,7 @@ async def generate(
     garment: UploadFile = File(...),
     gender: str = Form(...),
     framing: str = Form(...),
+    steps: int = Form(30),
 ) -> Response:
     prompt = (
         "This is a two-panel reference. LEFT: an adult "
@@ -120,7 +120,7 @@ async def generate(
                 edit_image=reference_sheet(person_image, garment_image),
                 edit_image_auto_resize=True,
                 seed=42,
-                num_inference_steps=30,
+                num_inference_steps=max(1, min(30, steps)),
                 width=576,
                 height=768,
             )

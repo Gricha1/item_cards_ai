@@ -4,6 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from types import MethodType
 
+import httpx
 from PIL import Image
 
 
@@ -21,11 +22,13 @@ class FashnVtonService:
         *,
         low_memory: bool = False,
         num_timesteps: int = 20,
+        remote_url: str | None = None,
     ) -> None:
         self.weights_dir = weights_dir
         self.category = category
         self.low_memory = low_memory
         self.num_timesteps = num_timesteps
+        self.remote_url = remote_url.rstrip("/") if remote_url else None
         self._pipeline = None
 
     @staticmethod
@@ -145,6 +148,23 @@ class FashnVtonService:
         except Exception as error:
             raise FashnVtonError("Не удалось загрузить FASHN VTON. Проверьте CUDA, веса и свободную VRAM.") from error
 
+    def _generate_remote(self, person_path: Path, garment_path: Path, output_path: Path) -> Path:
+        try:
+            with person_path.open("rb") as person_file, garment_path.open("rb") as garment_file:
+                response = httpx.post(
+                    f"{self.remote_url}/generate",
+                    files={
+                        "person": (person_path.name, person_file, "image/png"),
+                        "garment": (garment_path.name, garment_file, "image/png"),
+                    },
+                    timeout=300.0,
+                )
+            response.raise_for_status()
+            output_path.write_bytes(response.content)
+            return output_path
+        except Exception as error:
+            raise FashnVtonError("Remote FASHN VTON is unavailable.") from error
+
     def generate(
         self,
         person_path: Path,
@@ -155,6 +175,8 @@ class FashnVtonService:
         variant: str = "first",
         seed: int = 42,
     ) -> Path:
+        if self.remote_url:
+            return self._generate_remote(person_path, garment_path, output_path)
         try:
             pipeline = self._get_pipeline()
             self._install_progress_sampler(pipeline, progress_callback, variant)

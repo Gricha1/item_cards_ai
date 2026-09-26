@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     temp_dir: Path = BASE_DIR / "data" / "tmp"
     input_dir: Path = BASE_DIR / "data" / "inputs"
     fashn_weights_dir: Path = BASE_DIR / "weights" / "fashn-vton-1.5"
+    fashn_remote_url: str | None = None
     fashn_category: str = "tops"
     # FASHN normally duplicates the denoising batch for classifier-free guidance.
     # On 8 GB cards this can exceed VRAM; low-memory mode uses the conditional

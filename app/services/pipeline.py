@@ -29,6 +29,7 @@ class GenerationPipeline:
             settings.fashn_category,
             low_memory=settings.fashn_low_memory,
             num_timesteps=settings.fashn_num_timesteps,
+            remote_url=settings.fashn_remote_url,
         )
         self.qwen = QwenEditService(
             settings.qwen_enabled, settings.qwen_min_vram_gb, settings.qwen_remote_url

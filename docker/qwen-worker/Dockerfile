@@ -5,7 +5,7 @@ USER root
 # Qwen Image Edit needs current Diffusers, Transformers and Hugging Face Hub.
 RUN pip install --no-cache-dir --upgrade \
     "diffusers==0.40.0" "transformers==4.49.0" "accelerate>=1.10" \
-    "huggingface-hub==1.33.0" "hf-xet==1.6.0" "bitsandbytes>=0.46.1" \
+    "huggingface-hub==0.36.0" "hf-xet==1.6.0" "bitsandbytes>=0.46.1" \
     "python-multipart==0.0.20" \
     "git+https://github.com/modelscope/DiffSynth-Studio.git"
 

@@ -39,15 +39,18 @@ def pipeline() -> QwenImagePipeline:
         vram_config = {
             "offload_dtype": "disk",
             "offload_device": "disk",
-            "onload_dtype": torch.float8_e4m3fn,
+            # TITAN RTX (Turing, compute capability 7.5) has neither native
+            # FP8 nor BF16 instructions.  FP16 is the compatible low-VRAM
+            # transport/computation format on this GPU generation.
+            "onload_dtype": torch.float16,
             "onload_device": "cpu",
-            "preparing_dtype": torch.float8_e4m3fn,
+            "preparing_dtype": torch.float16,
             "preparing_device": "cuda",
-            "computation_dtype": torch.bfloat16,
+            "computation_dtype": torch.float16,
             "computation_device": "cuda",
         }
         _pipeline = QwenImagePipeline.from_pretrained(
-            torch_dtype=torch.bfloat16,
+            torch_dtype=torch.float16,
             device="cuda",
             model_configs=[
                 ModelConfig(

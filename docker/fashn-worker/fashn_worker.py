@@ -41,7 +41,17 @@ async def generate(
                 person_image=person_image,
                 garment_image=garment_image,
                 category="tops",
-                num_timesteps=30,
+                # A product photo (hanger, mannequin or flat lay) is not a
+                # photo of a garment already worn by a model.  Leaving the
+                # upstream default ("model") here makes the conditioning
+                # treat the background/body in the product photo as part of
+                # the clothing, which is the main cause of warped sleeves
+                # and invented details on catalogue uploads.
+                garment_photo_type="flat-lay",
+                # Upstream describes 50 steps as the quality setting; 30 is
+                # the balanced/faster preset.  GPU 2 has enough headroom for
+                # the higher-fidelity mode.
+                num_timesteps=50,
                 seed=seed,
             )
         buffer = BytesIO()

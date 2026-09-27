@@ -19,6 +19,7 @@ router = Router()
 
 
 class GenerationState(StatesGroup):
+    choosing_garment_photo_type = State()
     choosing_gender = State()
     choosing_age = State()
     choosing_framing = State()
@@ -30,6 +31,13 @@ def gender_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="Мужчина", callback_data="gender:male"),
         InlineKeyboardButton(text="Женщина", callback_data="gender:female"),
+    ]])
+
+
+def garment_photo_type_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="🧥 Вещь отдельно / на вешалке", callback_data="garment:flat-lay"),
+        InlineKeyboardButton(text="🧍 Вещь на человеке", callback_data="garment:model"),
     ]])
 
 
@@ -83,6 +91,7 @@ def make_router(settings: Settings) -> Router:
                     report_progress,
                     age_range=data["age_range"],
                     seed=secrets.randbelow(2_000_000_000) + 1,
+                    garment_photo_type=data["garment_photo_type"],
                 )
             )
             reported_bucket = -1
@@ -141,8 +150,21 @@ def make_router(settings: Settings) -> Router:
 
         await state.clear()
         await state.update_data(garment_path=str(normalized_path))
+        await state.set_state(GenerationState.choosing_garment_photo_type)
+        await message.answer(
+            "Как снята вещь на фото? Это нужно, чтобы сохранить её форму и детали.",
+            reply_markup=garment_photo_type_keyboard(),
+        )
+
+    @configured.callback_query(
+        GenerationState.choosing_garment_photo_type, F.data.startswith("garment:")
+    )
+    async def choose_garment_photo_type(callback: CallbackQuery, state: FSMContext) -> None:
+        garment_photo_type = callback.data.split(":", 1)[1]
+        await state.update_data(garment_photo_type=garment_photo_type)
         await state.set_state(GenerationState.choosing_gender)
-        await message.answer("Выберите пол виртуальной модели:", reply_markup=gender_keyboard())
+        await callback.message.edit_text("Выберите пол виртуальной модели:", reply_markup=gender_keyboard())
+        await callback.answer()
 
     @configured.callback_query(GenerationState.choosing_gender, F.data.startswith("gender:"))
     async def choose_gender(callback: CallbackQuery, state: FSMContext) -> None:
@@ -151,6 +173,10 @@ def make_router(settings: Settings) -> Router:
         await state.set_state(GenerationState.choosing_age)
         await callback.message.edit_text("Выберите возраст модели (только 18+):", reply_markup=age_keyboard())
         await callback.answer()
+
+    # The remaining choices deliberately follow the photo-type question:
+    # FASHN needs it before inference, whereas gender/age/frame choose only
+    # the person template.
 
     @configured.callback_query(GenerationState.choosing_age, F.data.startswith("age:"))
     async def choose_age(callback: CallbackQuery, state: FSMContext) -> None:

@@ -158,6 +158,7 @@ class FashnVtonService:
         seed: int,
         progress_callback: Callable[[str, int, int], None] | None,
         variant: str,
+        garment_photo_type: str,
     ) -> Path:
         finished = Event()
 
@@ -180,7 +181,7 @@ class FashnVtonService:
                         "person": (person_path.name, person_file, "image/png"),
                         "garment": (garment_path.name, garment_file, "image/png"),
                     },
-                    data={"seed": str(seed)},
+                    data={"seed": str(seed), "garment_photo_type": garment_photo_type},
                     timeout=300.0,
                 )
             response.raise_for_status()
@@ -202,9 +203,18 @@ class FashnVtonService:
         *,
         variant: str = "first",
         seed: int = 42,
+        garment_photo_type: str = "flat-lay",
     ) -> Path:
         if self.remote_url:
-            return self._generate_remote(person_path, garment_path, output_path, seed, progress_callback, variant)
+            return self._generate_remote(
+                person_path,
+                garment_path,
+                output_path,
+                seed,
+                progress_callback,
+                variant,
+                garment_photo_type,
+            )
         try:
             pipeline = self._get_pipeline()
             self._install_progress_sampler(pipeline, progress_callback, variant)
@@ -221,6 +231,7 @@ class FashnVtonService:
                 person_image=Image.open(person_path).convert("RGB"),
                 garment_image=Image.open(garment_path).convert("RGB"),
                 category=self.category,
+                garment_photo_type=garment_photo_type,
                 num_timesteps=self.num_timesteps,
                 seed=seed,
             )

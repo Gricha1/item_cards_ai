@@ -61,12 +61,19 @@ class GenerationPipeline:
         *,
         age_range: str | None = None,
         seed: int = 42,
+        garment_photo_type: str = "flat-lay",
     ) -> list[GeneratedVariant]:
         person_path = self.template_for(gender, framing, age_range)
         first_path = unique_path(self.settings.output_dir)
         second_path = unique_path(self.settings.output_dir)
         first = self.fashn.generate(
-            person_path, garment_path, first_path, progress_callback, variant="first", seed=seed
+            person_path,
+            garment_path,
+            first_path,
+            progress_callback,
+            variant="first",
+            seed=seed,
+            garment_photo_type=garment_photo_type,
         )
 
         # The ML4 FASHN worker is the fast production route. Qwen is kept as
@@ -80,6 +87,7 @@ class GenerationPipeline:
                 progress_callback,
                 variant="second",
                 seed=seed + 1,
+                garment_photo_type=garment_photo_type,
             )
             return [
                 GeneratedVariant("Вариант 1 — FASHN VTON", first),
@@ -107,6 +115,7 @@ class GenerationPipeline:
                     progress_callback,
                     variant="second",
                     seed=seed + 1,
+                    garment_photo_type=garment_photo_type,
                 )
                 return [
                     GeneratedVariant("Вариант 1 — FASHN VTON", first),

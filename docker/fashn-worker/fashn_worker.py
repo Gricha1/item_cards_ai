@@ -31,9 +31,14 @@ def health() -> dict[str, bool]:
 
 @app.post("/generate")
 async def generate(
-    person: UploadFile = File(...), garment: UploadFile = File(...), seed: int = Form(42)
+    person: UploadFile = File(...),
+    garment: UploadFile = File(...),
+    seed: int = Form(42),
+    garment_photo_type: str = Form("flat-lay"),
 ) -> Response:
     try:
+        if garment_photo_type not in {"flat-lay", "model"}:
+            raise ValueError("garment_photo_type must be 'flat-lay' or 'model'")
         person_image = Image.open(BytesIO(await person.read())).convert("RGB")
         garment_image = Image.open(BytesIO(await garment.read())).convert("RGB")
         with lock:
@@ -41,13 +46,11 @@ async def generate(
                 person_image=person_image,
                 garment_image=garment_image,
                 category="tops",
-                # A product photo (hanger, mannequin or flat lay) is not a
-                # photo of a garment already worn by a model.  Leaving the
-                # upstream default ("model") here makes the conditioning
-                # treat the background/body in the product photo as part of
-                # the clothing, which is the main cause of warped sleeves
-                # and invented details on catalogue uploads.
-                garment_photo_type="flat-lay",
+                # A product photo (hanger, mannequin or flat lay) and a
+                # garment already worn by a person need distinct conditioning
+                # modes. The bot asks the user explicitly instead of guessing
+                # from pixels and silently degrading either case.
+                garment_photo_type=garment_photo_type,
                 # Upstream describes 50 steps as the quality setting; 30 is
                 # the balanced/faster preset.  GPU 2 has enough headroom for
                 # the higher-fidelity mode.

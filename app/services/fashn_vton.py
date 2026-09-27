@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from threading import Event, Thread
 from types import MethodType
+from time import monotonic
 
 import httpx
 from PIL import Image
@@ -148,7 +150,28 @@ class FashnVtonService:
         except Exception as error:
             raise FashnVtonError("Не удалось загрузить FASHN VTON. Проверьте CUDA, веса и свободную VRAM.") from error
 
-    def _generate_remote(self, person_path: Path, garment_path: Path, output_path: Path, seed: int) -> Path:
+    def _generate_remote(
+        self,
+        person_path: Path,
+        garment_path: Path,
+        output_path: Path,
+        seed: int,
+        progress_callback: Callable[[str, int, int], None] | None,
+        variant: str,
+    ) -> Path:
+        finished = Event()
+
+        def report_estimated_progress() -> None:
+            # A remote FASHN request does not stream denoising steps. Keep the
+            # chat responsive with a conservative time-based estimate instead.
+            started = monotonic()
+            while not finished.wait(5):
+                if progress_callback is not None:
+                    elapsed = monotonic() - started
+                    progress_callback(variant, min(95, max(1, round(elapsed * 100 / 180))), 100)
+
+        reporter = Thread(target=report_estimated_progress, daemon=True)
+        reporter.start()
         try:
             with person_path.open("rb") as person_file, garment_path.open("rb") as garment_file:
                 response = httpx.post(
@@ -162,9 +185,13 @@ class FashnVtonService:
                 )
             response.raise_for_status()
             output_path.write_bytes(response.content)
+            if progress_callback is not None:
+                progress_callback(variant, 100, 100)
             return output_path
         except Exception as error:
             raise FashnVtonError("Remote FASHN VTON is unavailable.") from error
+        finally:
+            finished.set()
 
     def generate(
         self,
@@ -177,7 +204,7 @@ class FashnVtonService:
         seed: int = 42,
     ) -> Path:
         if self.remote_url:
-            return self._generate_remote(person_path, garment_path, output_path, seed)
+            return self._generate_remote(person_path, garment_path, output_path, seed, progress_callback, variant)
         try:
             pipeline = self._get_pipeline()
             self._install_progress_sampler(pipeline, progress_callback, variant)

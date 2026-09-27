@@ -99,6 +99,14 @@ def make_router(settings: Settings) -> Router:
                 bucket = percent // 10
                 if bucket > reported_bucket or percent == 100:
                     variant_number = "1" if variant == "first" else "2"
+                    if total_steps == 100:
+                        remaining_seconds = max(0, round(180 * (100 - percent) / 100))
+                        remaining_minutes = max(1, round(remaining_seconds / 60))
+                        await message.edit_text(
+                            f"Вариант {variant_number} из 2: ≈{percent}%. Осталось около {remaining_minutes} мин."
+                        )
+                        reported_bucket = bucket
+                        continue
                     await message.edit_text(
                         f"Вариант {variant_number} из 2: {percent}% ({current_step}/{total_steps})."
                     )

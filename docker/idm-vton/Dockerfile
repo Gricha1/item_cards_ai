@@ -16,7 +16,7 @@ WORKDIR /opt/IDM-VTON
 RUN git clone --depth 1 https://github.com/yisol/IDM-VTON.git . \
     && pip install --no-cache-dir \
         accelerate==0.25.0 torchmetrics==1.2.1 tqdm==4.66.1 \
-        transformers==4.36.2 diffusers==0.25.0 einops==0.7.0 \
+        huggingface-hub==0.20.3 transformers==4.36.2 diffusers==0.25.0 einops==0.7.0 \
         bitsandbytes==0.39.0 scipy==1.11.1 opencv-python \
         gradio==4.24.0 fvcore cloudpickle omegaconf pycocotools basicsr av \
         onnxruntime-gpu==1.15.1 \

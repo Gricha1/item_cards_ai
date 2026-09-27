@@ -169,7 +169,11 @@ class FashnVtonService:
             while not finished.wait(5):
                 if progress_callback is not None:
                     elapsed = monotonic() - started
-                    progress_callback(variant, min(95, max(1, round(elapsed * 100 / 180))), 100)
+                    # The worker runs the 50-step quality preset. A warmed
+                    # GPU 2 render is about four minutes, so use that as the
+                    # conservative chat estimate rather than pretending the
+                    # former 30-step time still applies.
+                    progress_callback(variant, min(95, max(1, round(elapsed * 100 / 240))), 100)
 
         reporter = Thread(target=report_estimated_progress, daemon=True)
         reporter.start()

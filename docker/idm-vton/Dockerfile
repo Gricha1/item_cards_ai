@@ -11,13 +11,15 @@ WORKDIR /opt/IDM-VTON
 # This research model is deliberately isolated from the production FASHN
 # worker. Its licence is non-commercial and it is used here only for a
 # side-by-side quality evaluation explicitly requested by the project owner.
+# The CUDA 11.7 PyTorch base uses Python 3.8; 1.15.1 is the newest compatible
+# ONNX Runtime GPU wheel in the package index.
 RUN git clone --depth 1 https://github.com/yisol/IDM-VTON.git . \
     && pip install --no-cache-dir \
         accelerate==0.25.0 torchmetrics==1.2.1 tqdm==4.66.1 \
         transformers==4.36.2 diffusers==0.25.0 einops==0.7.0 \
         bitsandbytes==0.39.0 scipy==1.11.1 opencv-python \
         gradio==4.24.0 fvcore cloudpickle omegaconf pycocotools basicsr av \
-        onnxruntime-gpu==1.16.2 \
+        onnxruntime-gpu==1.15.1 \
     && pip install --no-cache-dir 'git+https://github.com/facebookresearch/detectron2.git'
 
 # The upstream demo defaults to loopback. The worker is intentionally bound

@@ -199,7 +199,10 @@ def make_router(settings: Settings) -> Router:
         await callback.answer("Запускаю новую вариацию")
         await generate_and_send(callback.message, state, await state.get_data())
 
-    @configured.callback_query(GenerationState.ready, F.data == "result:new-item")
+    # Result keyboards can outlive a bot restart, while the default in-memory
+    # FSM storage does not. Starting a new item needs no previous generation
+    # data, so keep this action available for an old result message too.
+    @configured.callback_query(F.data == "result:new-item")
     async def start_new_item(callback: CallbackQuery, state: FSMContext) -> None:
         await state.clear()
         await callback.answer()

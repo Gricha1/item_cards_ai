@@ -1,5 +1,7 @@
 FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git ffmpeg libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*

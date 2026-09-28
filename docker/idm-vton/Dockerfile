@@ -27,7 +27,7 @@ RUN pip install --no-cache-dir huggingface-hub==0.20.3
 
 # The upstream demo defaults to loopback. The worker is intentionally bound
 # only to ML4 localhost by docker's port publishing below.
-RUN sed -i 's/demo.launch()/demo.launch(server_name="0.0.0.0")/' gradio_demo/app.py
+RUN sed -i 's/image_blocks.launch()/image_blocks.launch(server_name="0.0.0.0")/' gradio_demo/app.py
 
 EXPOSE 7860
 CMD ["python", "gradio_demo/app.py"]

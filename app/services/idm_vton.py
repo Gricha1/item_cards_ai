@@ -50,12 +50,14 @@ class IdmVtonService:
         reporter = Thread(target=report_estimated_progress, daemon=True)
         reporter.start()
         try:
-            from gradio_client import Client, handle_file
+            from gradio_client import Client
 
             client = Client(self.remote_url, verbose=False)
             result = client.predict(
-                {"background": handle_file(str(person_path)), "layers": [], "composite": None},
-                handle_file(str(garment_path)),
+                # gradio-client 0.14 uploads local file paths itself.  This
+                # form also remains compatible with newer client versions.
+                {"background": str(person_path), "layers": [], "composite": None},
+                str(garment_path),
                 (
                     "exact product garment; preserve the original color, fabric, silhouette, "
                     "zipper, collar, cuffs, pockets and all visible details"

@@ -25,6 +25,11 @@ RUN git clone --depth 1 https://github.com/yisol/IDM-VTON.git . \
 # diffusers 0.25 imports cached_download, removed by later Hub releases.
 RUN pip install --no-cache-dir huggingface-hub==0.20.3
 
+# IDM-VTON's Gradio 4.24 demo uses Starlette's pre-0.28 template API.
+# Newer FastAPI/Starlette releases are installed transitively by pip and make
+# the demo fail during its localhost readiness check before inference starts.
+RUN pip install --no-cache-dir fastapi==0.103.2 starlette==0.27.0
+
 # The upstream demo defaults to loopback. The worker is intentionally bound
 # only to ML4 localhost by docker's port publishing below.
 RUN sed -i 's/image_blocks.launch()/image_blocks.launch(server_name="0.0.0.0")/' gradio_demo/app.py

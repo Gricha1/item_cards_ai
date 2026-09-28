@@ -7,6 +7,7 @@ from pathlib import Path
 from app.config import Settings
 from app.services.fashn_vton import FashnVtonService
 from app.services.flux_fallback import FluxFallbackError, FluxFallbackService
+from app.services.idm_vton import IdmVtonService
 from app.services.qwen_edit import QwenEditService, QwenUnavailableError
 from app.utils.temp_files import unique_path
 
@@ -34,6 +35,7 @@ class GenerationPipeline:
         self.qwen = QwenEditService(
             settings.qwen_enabled, settings.qwen_min_vram_gb, settings.qwen_remote_url
         )
+        self.idm = IdmVtonService(settings.idm_vton_remote_url)
         self.flux = FluxFallbackService(settings.flux_model_id)
 
     def template_for(self, gender: str, framing: str, age_range: str | None = None) -> Path:
@@ -66,6 +68,23 @@ class GenerationPipeline:
         person_path = self.template_for(gender, framing, age_range)
         first_path = unique_path(self.settings.output_dir)
         second_path = unique_path(self.settings.output_dir)
+        if self.idm.enabled:
+            first = self.idm.generate(
+                person_path, garment_path, first_path, progress_callback, variant="first", seed=seed
+            )
+            second = self.idm.generate(
+                person_path,
+                garment_path,
+                second_path,
+                progress_callback,
+                variant="second",
+                seed=seed + 1,
+            )
+            return [
+                GeneratedVariant("Вариант 1 — IDM-VTON HD", first),
+                GeneratedVariant("Вариант 2 — IDM-VTON HD", second),
+            ]
+
         first = self.fashn.generate(
             person_path,
             garment_path,

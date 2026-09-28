@@ -104,12 +104,14 @@ def make_router(settings: Settings) -> Router:
                 if variant != active_variant:
                     active_variant = variant
                     reported_bucket = -1
-                percent = round(current_step * 100 / total_steps)
+                estimated_seconds = -total_steps if total_steps < 0 else None
+                percent = round(current_step * 100 / (100 if estimated_seconds else total_steps))
                 bucket = percent // 10
                 if bucket > reported_bucket or percent == 100:
                     variant_number = "1" if variant == "first" else "2"
-                    if total_steps == 100:
-                        remaining_seconds = max(0, round(180 * (100 - percent) / 100))
+                    if estimated_seconds is not None or total_steps == 100:
+                        estimate = estimated_seconds or 180
+                        remaining_seconds = max(0, round(estimate * (100 - percent) / 100))
                         remaining_minutes = max(1, round(remaining_seconds / 60))
                         await message.edit_text(
                             f"Вариант {variant_number} из 2: ≈{percent}%. Осталось около {remaining_minutes} мин."

@@ -28,7 +28,9 @@ RUN pip install --no-cache-dir huggingface-hub==0.20.3
 # IDM-VTON's Gradio 4.24 demo uses Starlette's pre-0.28 template API.
 # Newer FastAPI/Starlette releases are installed transitively by pip and make
 # the demo fail during its localhost readiness check before inference starts.
-RUN pip install --no-cache-dir fastapi==0.103.2 starlette==0.27.0
+RUN pip install --no-cache-dir \
+    fastapi==0.103.2 starlette==0.27.0 \
+    pydantic==2.4.2 pydantic-core==2.10.1
 
 # The upstream demo defaults to loopback. The worker is intentionally bound
 # only to ML4 localhost by docker's port publishing below.

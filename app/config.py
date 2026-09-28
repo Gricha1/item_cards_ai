@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     output_dir: Path = BASE_DIR / "data" / "outputs"
     temp_dir: Path = BASE_DIR / "data" / "tmp"
     input_dir: Path = BASE_DIR / "data" / "inputs"
+    analytics_db_path: Path = BASE_DIR / "data" / "analytics.sqlite3"
+    dashboard_host: str = "127.0.0.1"
+    dashboard_port: int = 8770
+    dashboard_token: str | None = None
     fashn_weights_dir: Path = BASE_DIR / "weights" / "fashn-vton-1.5"
     fashn_remote_url: str | None = None
     idm_vton_remote_url: str | None = None
@@ -36,14 +40,16 @@ class Settings(BaseSettings):
     flux_model_id: str = "black-forest-labs/FLUX.1-schnell"
     log_level: str = "INFO"
 
-    @field_validator("output_dir", "temp_dir", "input_dir", "fashn_weights_dir", mode="before")
+    @field_validator(
+        "output_dir", "temp_dir", "input_dir", "analytics_db_path", "fashn_weights_dir", mode="before"
+    )
     @classmethod
     def make_project_paths_absolute(cls, value: str | Path) -> Path:
         path = Path(value)
         return path if path.is_absolute() else BASE_DIR / path
 
     def create_directories(self) -> None:
-        for directory in (self.output_dir, self.temp_dir, self.input_dir):
+        for directory in (self.output_dir, self.temp_dir, self.input_dir, self.analytics_db_path.parent):
             directory.mkdir(parents=True, exist_ok=True)
 
 

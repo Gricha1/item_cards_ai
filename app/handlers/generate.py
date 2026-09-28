@@ -11,6 +11,7 @@ from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardButton, Inli
 from loguru import logger
 
 from app.config import Settings
+from app.services.analytics import AnalyticsStore
 from app.services.pipeline import GenerationPipeline, TemplateNotFoundError
 from app.utils.image_io import ImageValidationError, validate_and_normalize
 from app.utils.temp_files import unique_path
@@ -69,11 +70,12 @@ def result_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-def make_router(settings: Settings) -> Router:
+def make_router(settings: Settings, analytics: AnalyticsStore) -> Router:
     configured = Router()
     pipeline = GenerationPipeline(settings)
 
-    async def generate_and_send(message: Message, state: FSMContext, data: dict) -> None:
+    async def generate_and_send(message: Message, state: FSMContext, data: dict, user) -> None:
+        analytics.record(user, "generation_started")
         await message.edit_text("Генерация началась. Подготавливаю фото и модель…")
         try:
             loop = asyncio.get_running_loop()
@@ -127,15 +129,19 @@ def make_router(settings: Settings) -> Router:
             for variant in variants:
                 await message.answer_photo(FSInputFile(variant.path), caption=variant.label)
             await state.set_state(GenerationState.ready)
+            analytics.record(user, "generation_completed")
             await message.answer("Что сделать с результатом?", reply_markup=result_keyboard())
         except TemplateNotFoundError as error:
+            analytics.record(user, "generation_failed", "template_not_found")
             await message.answer(str(error))
         except Exception:
             logger.exception("Generation failed")
+            analytics.record(user, "generation_failed")
             await message.answer("Не удалось создать изображения. Проверьте шаблоны, веса моделей и свободную VRAM.")
 
     @configured.message(F.photo)
     async def receive_photo(message: Message, state: FSMContext) -> None:
+        analytics.record(message.from_user, "photo_received")
         photo = message.photo[-1]
         raw_path = unique_path(settings.temp_dir, ".jpg")
         normalized_path = unique_path(settings.input_dir)
@@ -163,6 +169,7 @@ def make_router(settings: Settings) -> Router:
     )
     async def choose_garment_photo_type(callback: CallbackQuery, state: FSMContext) -> None:
         garment_photo_type = callback.data.split(":", 1)[1]
+        analytics.record(callback.from_user, "garment_type_selected", garment_photo_type)
         await state.update_data(garment_photo_type=garment_photo_type)
         await state.set_state(GenerationState.choosing_gender)
         await callback.message.edit_text("Выберите пол виртуальной модели:", reply_markup=gender_keyboard())
@@ -171,6 +178,7 @@ def make_router(settings: Settings) -> Router:
     @configured.callback_query(GenerationState.choosing_gender, F.data.startswith("gender:"))
     async def choose_gender(callback: CallbackQuery, state: FSMContext) -> None:
         gender = callback.data.split(":", 1)[1]
+        analytics.record(callback.from_user, "gender_selected", gender)
         await state.update_data(gender=gender)
         await state.set_state(GenerationState.choosing_age)
         await callback.message.edit_text("Выберите возраст модели (только 18+):", reply_markup=age_keyboard())
@@ -183,6 +191,7 @@ def make_router(settings: Settings) -> Router:
     @configured.callback_query(GenerationState.choosing_age, F.data.startswith("age:"))
     async def choose_age(callback: CallbackQuery, state: FSMContext) -> None:
         age_range = callback.data.split(":", 1)[1]
+        analytics.record(callback.from_user, "age_selected", age_range)
         await state.update_data(age_range=age_range)
         await state.set_state(GenerationState.choosing_framing)
         await callback.message.edit_text("Выберите кадр:", reply_markup=framing_keyboard())
@@ -191,27 +200,31 @@ def make_router(settings: Settings) -> Router:
     @configured.callback_query(GenerationState.choosing_framing, F.data.startswith("frame:"))
     async def choose_framing(callback: CallbackQuery, state: FSMContext) -> None:
         framing = callback.data.split(":", 1)[1]
+        analytics.record(callback.from_user, "framing_selected", framing)
         await state.update_data(framing=framing)
         data = await state.get_data()
         await callback.answer()
-        await generate_and_send(callback.message, state, data)
+        await generate_and_send(callback.message, state, data, callback.from_user)
 
     @configured.callback_query(GenerationState.ready, F.data == "result:retry")
     async def retry_generation(callback: CallbackQuery, state: FSMContext) -> None:
+        analytics.record(callback.from_user, "retry_clicked")
         await callback.answer("Запускаю новую вариацию")
-        await generate_and_send(callback.message, state, await state.get_data())
+        await generate_and_send(callback.message, state, await state.get_data(), callback.from_user)
 
     # Result keyboards can outlive a bot restart, while the default in-memory
     # FSM storage does not. Starting a new item needs no previous generation
     # data, so keep this action available for an old result message too.
     @configured.callback_query(F.data == "result:new-item")
     async def start_new_item(callback: CallbackQuery, state: FSMContext) -> None:
+        analytics.record(callback.from_user, "new_item_clicked")
         await state.clear()
         await callback.answer()
         await callback.message.edit_text("Пришлите фото другой вещи как изображение.")
 
     @configured.callback_query(GenerationState.ready, F.data == "result:details")
     async def request_details(callback: CallbackQuery, state: FSMContext) -> None:
+        analytics.record(callback.from_user, "details_requested")
         await state.set_state(GenerationState.adding_details)
         await callback.answer()
         await callback.message.edit_text("Опишите, что добавить или изменить в текущей фотографии.")

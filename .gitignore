@@ -11,6 +11,7 @@ data/outputs/*
 !data/outputs/.gitkeep
 data/tmp/*
 !data/tmp/.gitkeep
+data/*.sqlite3
 weights/
 models/
 .cache/
